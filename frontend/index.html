@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intermediate Code Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <h1>Intermediate Code Generator</h1>
+            <p class="subtitle">Compiler Design Project - Assignment Statement Processor</p>
+        </header>
+
+        <!-- Input Section -->
+        <section class="input-section">
+            <h2>Input Code</h2>
+            <p class="hint">Enter assignment statements (one per line):</p>
+            <textarea id="codeInput" placeholder="Example:&#10;a = b + c * d&#10;e = a - b&#10;f = e / 2"></textarea>
+            
+            <div class="button-group">
+                <button id="compileBtn" class="btn btn-primary">
+                    <span class="btn-icon">⚡</span>
+                    Compile & Generate
+                </button>
+                <button id="clearBtn" class="btn btn-clear">
+                    <span class="btn-icon">🗑️</span>
+                    Clear All
+                </button>
+            </div>
+            
+            <div id="statusMessage" class="status-message"></div>
+        </section>
+
+        <!-- Output Section with Tabs -->
+        <section class="output-section">
+            <h2>Compiler Output</h2>
+            
+            <!-- Tab Navigation -->
+            <div class="tab-container">
+                <button class="tab-btn active" data-tab="tac">
+                    <span class="tab-icon">📝</span>
+                    Three Address Code
+                </button>
+                <button class="tab-btn" data-tab="quadruples">
+                    <span class="tab-icon">📊</span>
+                    Quadruples
+                </button>
+                <button class="tab-btn" data-tab="symbol">
+                    <span class="tab-icon">📋</span>
+                    Symbol Table
+                </button>
+                <button class="tab-btn" data-tab="optimized">
+                    <span class="tab-icon">⚡</span>
+                    Optimized Code
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content-container">
+                <div id="tac" class="tab-content active">
+                    <h3>Three Address Code (TAC)</h3>
+                    <pre id="tacOutput" class="output-box">No output yet. Click "Compile & Generate" to process your code.</pre>
+                </div>
+
+                <div id="quadruples" class="tab-content">
+                    <h3>Quadruples</h3>
+                    <pre id="quadruplesOutput" class="output-box">No output yet. Click "Compile & Generate" to process your code.</pre>
+                </div>
+
+                <div id="symbol" class="tab-content">
+                    <h3>Symbol Table</h3>
+                    <pre id="symbolOutput" class="output-box">No output yet. Click "Compile & Generate" to process your code.</pre>
+                </div>
+
+                <div id="optimized" class="tab-content">
+                    <h3>Optimized Code</h3>
+                    <pre id="optimizedOutput" class="output-box">No output yet. Click "Compile & Generate" to process your code.</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Instructions Section -->
+        <section class="instructions">
+            <h3>How to Use</h3>
+            <ol>
+                <li><strong>Enter Code:</strong> Type assignment statements in the input area above</li>
+                <li><strong>Compile:</strong> Click "Compile & Generate" to process your code</li>
+                <li><strong>View Results:</strong> Switch between tabs to see different output formats</li>
+                <li><strong>Clear:</strong> Use "Clear All" to reset and start fresh</li>
+            </ol>
+            <p class="note"><strong>Note:</strong> Make sure the backend server is running on port 3000.</p>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>Compiler Design Project &copy; 2026</p>
+            <p class="server-status">
+                Server Status: <span id="serverStatus" class="status-indicator">Checking...</span>
+            </p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
