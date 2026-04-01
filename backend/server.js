@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
+const os = require('os');
 
 const execPromise = util.promisify(exec);
 
@@ -20,12 +22,14 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 const PROJECT_ROOT = path.join(__dirname, '..');
 const INPUT_FILE = path.join(PROJECT_ROOT, 'input.txt');
 const OUTPUTS_DIR = path.join(PROJECT_ROOT, 'outputs');
-const COMPILER_EXECUTABLE = path.join(PROJECT_ROOT, 'icg.exe');
+// Detect platform and set correct executable path
+const isWindows = os.platform() === 'win32';
+const COMPILER_EXECUTABLE = path.join(PROJECT_ROOT, isWindows ? 'icg.exe' : 'icg');
 
 // Ensure outputs directory exists
 async function ensureOutputsDir() {
     try {
-        await fs.mkdir(OUTPUTS_DIR, { recursive: true });
+        await fsp.mkdir(OUTPUTS_DIR, { recursive: true });
     } catch (error) {
         console.error('Error creating outputs directory:', error);
     }
@@ -33,8 +37,8 @@ async function ensureOutputsDir() {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         message: 'Server is running',
         timestamp: new Date().toISOString()
     });
@@ -52,45 +56,39 @@ app.post('/api/compile', async (req, res) => {
             });
         }
 
-        console.log('Received code for compilation:');
-        console.log(code);
-
         // Step 1: Save input to file
-        await fs.writeFile(INPUT_FILE, code, 'utf8');
-        console.log('Input saved to:', INPUT_FILE);
+        await fsp.writeFile(INPUT_FILE, code, 'utf8');
 
         // Step 2: Run the compiler
-        let compilerOutput;
+        let compilerOutput = '';
         try {
-            // Check if executable exists
-            const fs = require('fs');
             if (!fs.existsSync(COMPILER_EXECUTABLE)) {
-                console.log('Executable not found. Please build the compiler first using build.bat');
+                console.log('Executable not found at:', COMPILER_EXECUTABLE);
                 return res.status(500).json({
                     success: false,
-                    error: 'Compiler executable not found. Please run build.bat first to compile the C++ code.'
+                    error: 'Compiler executable not found. Please run "make" (macOS/Linux) or "build.bat" (Windows) first to compile the C++ code.'
                 });
             }
 
-            // Run the compiled executable with input file piped to stdin
-            console.log('Running compiler:', COMPILER_EXECUTABLE);
-            const { stdout, stderr } = await execPromise(`type "${INPUT_FILE}" | "${COMPILER_EXECUTABLE}"`, {
+            // Cross-platform command
+            const catCommand = isWindows ? 'type' : 'cat';
+            const fullCommand = `${catCommand} "${INPUT_FILE}" | "${COMPILER_EXECUTABLE}"`;
+
+            const { stdout, stderr } = await execPromise(fullCommand, {
                 cwd: PROJECT_ROOT,
-                timeout: 10000, // 10 second timeout
-                shell: 'cmd.exe'
+                timeout: 10000,
+                shell: isWindows ? 'cmd.exe' : '/bin/bash'
             });
-            
+
             compilerOutput = stdout;
             if (stderr) {
                 console.error('Compiler stderr:', stderr);
             }
-            console.log('Compiler executed successfully');
-            
         } catch (execError) {
             console.error('Execution error:', execError);
             return res.status(500).json({
                 success: false,
-                error: 'Failed to execute compiler. Error: ' + execError.message + '. Make sure to run build.bat first.'
+                error: 'Failed to execute compiler. Error: ' + execError.message
             });
         }
 
@@ -100,10 +98,9 @@ app.post('/api/compile', async (req, res) => {
         // Step 4: Return results
         res.json({
             success: true,
-            outputs: outputs,
-            compilerOutput: compilerOutput
+            outputs,
+            compilerOutput
         });
-
     } catch (error) {
         console.error('Compilation error:', error);
         res.status(500).json({
@@ -117,6 +114,7 @@ app.post('/api/compile', async (req, res) => {
 async function readOutputFiles() {
     const outputs = {
         tac: '',
+        parser: '',
         quadruples: '',
         symbolTable: '',
         optimized: ''
@@ -124,6 +122,7 @@ async function readOutputFiles() {
 
     const files = [
         { key: 'tac', file: 'tac.txt' },
+        { key: 'parser', file: 'expression_parser.txt' },
         { key: 'quadruples', file: 'quadruples.txt' },
         { key: 'symbolTable', file: 'symbol_table.txt' },
         { key: 'optimized', file: 'optimized_tac.txt' }
@@ -132,7 +131,7 @@ async function readOutputFiles() {
     for (const { key, file } of files) {
         try {
             const filePath = path.join(OUTPUTS_DIR, file);
-            const content = await fs.readFile(filePath, 'utf8');
+            const content = await fsp.readFile(filePath, 'utf8');
             outputs[key] = content;
             console.log(`Read ${file}: ${content.length} bytes`);
         } catch (error) {
@@ -147,27 +146,28 @@ async function readOutputFiles() {
 // Get individual output file
 app.get('/api/output/:type', async (req, res) => {
     const { type } = req.params;
-    
+
     const fileMap = {
-        'tac': 'tac.txt',
-        'quadruples': 'quadruples.txt',
-        'symbol': 'symbol_table.txt',
-        'optimized': 'optimized_tac.txt'
+        tac: 'tac.txt',
+        parser: 'expression_parser.txt',
+        quadruples: 'quadruples.txt',
+        symbol: 'symbol_table.txt',
+        optimized: 'optimized_tac.txt'
     };
 
     const filename = fileMap[type];
     if (!filename) {
-        return res.status(400).json({ error: 'Invalid output type' });
+        return res.status(400).json({ success: false, error: 'Invalid output type' });
     }
 
     try {
         const filePath = path.join(OUTPUTS_DIR, filename);
-        const content = await fs.readFile(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         res.json({ success: true, content });
     } catch (error) {
-        res.status(404).json({ 
-            success: false, 
-            error: 'Output file not found. Please compile first.' 
+        res.status(404).json({
+            success: false,
+            error: 'Output file not found. Please compile first.'
         });
     }
 });
@@ -180,7 +180,7 @@ app.get('/', (req, res) => {
 // Start server
 async function startServer() {
     await ensureOutputsDir();
-    
+
     app.listen(PORT, () => {
         console.log('🚀 Intermediate Code Generator Server');
         console.log(`Server running at: http://localhost:${PORT}`);
@@ -193,8 +193,7 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-// Start the server
-startServer().catch(error => {
+startServer().catch((error) => {
     console.error('Failed to start server:', error);
     process.exit(1);
 });

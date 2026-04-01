@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include "structures.h"
 #include "utils.h"
 #include "symbol_table.h"
@@ -22,28 +23,57 @@ map<string, string> variableValues;
 int tempVarCounter = 1;
 int tripleIndex = 0;
 
-// Process a single assignment statement
-void processStatement(const string& statement) {
-    // Parse assignment: LHS = RHS
+static string trimCopy(const string& s) {
+    size_t start = 0;
+    while (start < s.size() && isspace(static_cast<unsigned char>(s[start]))) start++;
+
+    if (start == s.size()) return "";
+
+    size_t end = s.size() - 1;
+    while (end > start && isspace(static_cast<unsigned char>(s[end]))) end--;
+
+    return s.substr(start, end - start + 1);
+}
+
+static string formatTokenList(const vector<string>& tokens) {
+    ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < tokens.size(); i++) {
+        oss << tokens[i];
+        if (i + 1 < tokens.size()) oss << ",";
+    }
+    oss << "]";
+    return oss.str();
+}
+
+static bool parseAssignment(const string& statement, string& lhsOut, string& rhsOut) {
     size_t equalPos = statement.find('=');
     if (equalPos == string::npos) {
-        cout << "Error: Invalid assignment statement\n";
-        return;
+        return false;
     }
-    
+
     string lhs = statement.substr(0, equalPos);
     string rhs = statement.substr(equalPos + 1);
-    
-    // Remove spaces
+
+    lhs = trimCopy(lhs);
+    rhs = trimCopy(rhs);
+
+    // Remove spaces from LHS identifier
     lhs.erase(remove_if(lhs.begin(), lhs.end(), ::isspace), lhs.end());
-    
+
+    if (lhs.empty() || rhs.empty()) return false;
+
+    lhsOut = lhs;
+    rhsOut = rhs;
+    return true;
+}
+
+// Process a single assignment statement
+void processStatement(const string& lhs, const string& rhs, const string& postfix) {
     // Add LHS to symbol table
     addToSymbolTable(lhs, false);
-    
-    // Convert to postfix
-    string postfix = infixToPostfix(rhs);
-    
-    // Generate TAC
+
+    // Generate TAC from already-computed postfix
     generateTAC(postfix, lhs);
 }
 
@@ -174,9 +204,34 @@ int main() {
     cout << "         PROCESSING STATEMENTS\n";
     cout << "========================================\n";
     
+    ofstream parserOut("outputs/expression_parser.txt");
+
     for (size_t i = 0; i < statements.size(); i++) {
         cout << (i + 1) << ". " << statements[i] << endl;
-        processStatement(statements[i]);
+
+        string lhs, rhs;
+        if (!parseAssignment(statements[i], lhs, rhs)) {
+            cout << "Error: Invalid assignment statement\n";
+            continue;
+        }
+
+        vector<string> tokens = tokenize(rhs);
+        string postfix = infixToPostfix(rhs);
+        postfix = trimCopy(postfix);
+
+        if (parserOut.is_open()) {
+            if (i > 0) parserOut << "\n\n";
+            parserOut << "EXPRESSION PARSER │\n";
+            parserOut << "  • Tokenize: " << formatTokenList(tokens) << "\n";
+            parserOut << "  • Convert: " << postfix;
+        }
+
+        processStatement(lhs, rhs, postfix);
+    }
+    
+    // Close the parser output file
+    if (parserOut.is_open()) {
+        parserOut.close();
     }
     
     // Display all outputs

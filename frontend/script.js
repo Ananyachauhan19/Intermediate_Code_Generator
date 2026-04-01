@@ -1,25 +1,36 @@
 // Configuration
 const API_BASE_URL = 'http://localhost:3000/api';
 
-// DOM Elements
-const codeInput = document.getElementById('codeInput');
-const compileBtn = document.getElementById('compileBtn');
-const clearBtn = document.getElementById('clearBtn');
-const statusMessage = document.getElementById('statusMessage');
-const serverStatus = document.getElementById('serverStatus');
-
-// Output elements
-const tacOutput = document.getElementById('tacOutput');
-const quadruplesOutput = document.getElementById('quadruplesOutput');
-const symbolOutput = document.getElementById('symbolOutput');
-const optimizedOutput = document.getElementById('optimizedOutput');
-
-// Tab functionality
-const tabButtons = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
+// DOM Elements - will be initialized after DOM loads
+let codeInput;
+let compileBtn;
+let clearBtn;
+let statusMessage;
+let serverStatus;
+let tacOutput;
+let quadruplesOutput;
+let symbolOutput;
+let optimizedOutput;
+let parserOutput;
+let tabButtons;
+let tabContents;
 
 // Initialize the application
 function init() {
+    // Get DOM Elements after page loads
+    codeInput = document.getElementById('codeInput');
+    compileBtn = document.getElementById('compileBtn');
+    clearBtn = document.getElementById('clearBtn');
+    statusMessage = document.getElementById('statusMessage');
+    serverStatus = document.getElementById('serverStatus');
+    tacOutput = document.getElementById('tacOutput');
+    quadruplesOutput = document.getElementById('quadruplesOutput');
+    symbolOutput = document.getElementById('symbolOutput');
+    optimizedOutput = document.getElementById('optimizedOutput');
+    parserOutput = document.getElementById('parserOutput');
+    tabButtons = document.querySelectorAll('.tab-btn');
+    tabContents = document.querySelectorAll('.tab-content');
+
     // Load saved input from localStorage if available
     const savedInput = localStorage.getItem('compilerInput');
     if (savedInput) {
@@ -145,6 +156,9 @@ async function compileCode() {
             displayOutputs(data.outputs);
             showStatus('✅ Compilation successful! Results displayed below.', 'success');
         } else {
+            if (data && data.outputs) {
+                displayOutputs(data.outputs);
+            }
             throw new Error(data.error || 'Compilation failed');
         }
     } catch (error) {
@@ -166,6 +180,15 @@ function displayOutputs(outputs) {
     } else {
         tacOutput.textContent = 'No TAC output generated.';
         tacOutput.classList.add('empty');
+    }
+
+    // Expression Parser
+    if (outputs.parser) {
+        parserOutput.textContent = outputs.parser;
+        parserOutput.classList.remove('empty');
+    } else {
+        parserOutput.textContent = 'No expression parser output generated.';
+        parserOutput.classList.add('empty');
     }
 
     // Quadruples
@@ -206,12 +229,14 @@ function clearAll() {
         // Clear all outputs
         const emptyMessage = 'No output yet. Click "Compile & Generate" to process your code.';
         tacOutput.textContent = emptyMessage;
+        parserOutput.textContent = emptyMessage;
         quadruplesOutput.textContent = emptyMessage;
         symbolOutput.textContent = emptyMessage;
         optimizedOutput.textContent = emptyMessage;
 
         // Add empty class
         tacOutput.classList.add('empty');
+        parserOutput.classList.add('empty');
         quadruplesOutput.classList.add('empty');
         symbolOutput.classList.add('empty');
         optimizedOutput.classList.add('empty');
